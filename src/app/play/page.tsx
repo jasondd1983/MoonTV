@@ -34,23 +34,13 @@ import {
   toggleFavorite,
 } from '@/lib/db.client';
 import { type VideoDetail, fetchVideoDetail } from '@/lib/fetchVideoDetail';
+import { SearchResult } from '@/lib/types';
 
 // 扩展 HTMLVideoElement 类型以支持 hls 属性
 declare global {
   interface HTMLVideoElement {
     hls?: any;
   }
-}
-
-// 搜索结果类型
-interface SearchResult {
-  id: string;
-  title: string;
-  poster: string;
-  episodes: string[];
-  source: string;
-  source_name: string;
-  year: string;
 }
 
 function PlayPageClient() {
@@ -82,6 +72,7 @@ function PlayPageClient() {
   const [showShortcutHint, setShowShortcutHint] = useState(false);
   const [shortcutText, setShortcutText] = useState('');
   const [shortcutDirection, setShortcutDirection] = useState('');
+  const [reverseEpisodeOrder, setReverseEpisodeOrder] = useState(false);
   const shortcutHintTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // 换源相关状态
@@ -113,13 +104,6 @@ function PlayPageClient() {
   );
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // 长按三倍速相关状态
-  const [isLongPressing, setIsLongPressing] = useState(false);
-  const [showSpeedTip, setShowSpeedTip] = useState(false);
-  const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const originalPlaybackRateRef = useRef<number>(1);
-  const speedTipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   // 用于记录是否需要在播放器 ready 后跳转到指定进度
   const resumeTimeRef = useRef<number | null>(null);
 
@@ -135,6 +119,18 @@ function PlayPageClient() {
 
   // 当播放器因重建而触发一次额外的 sourcechange 时，用于忽略那一次
   const ignoreSourceChangeRef = useRef(false);
+
+  // 上次使用的音量，默认 0.7
+  const lastVolumeRef = useRef<number>(0.7);
+
+  // 新增：去广告开关（从 localStorage 继承，默认取环境变量）
+  const [blockAdEnabled, _setBlockAdEnabled] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const v = localStorage.getItem('enable_blockad');
+      if (v !== null) return v === 'true';
+    }
+    return process.env.NEXT_PUBLIC_ENABLE_BLOCKAD === 'true';
+  });
 
   // 同步最新值到 refs
   useEffect(() => {
@@ -329,6 +325,16 @@ function PlayPageClient() {
       }
       resumeTimeRef.current = null;
     }
+
+    if (playerRef.current) {
+      setTimeout(() => {
+        try {
+          playerRef.current.volume = lastVolumeRef.current;
+        } catch (_) {
+          // 忽略异常
+        }
+      }, 0);
+    }
   };
 
   const onEnded = () => {
@@ -387,12 +393,6 @@ function PlayPageClient() {
       }
       if (saveIntervalRef.current) {
         clearInterval(saveIntervalRef.current);
-      }
-      if (longPressTimeoutRef.current) {
-        clearTimeout(longPressTimeoutRef.current);
-      }
-      if (speedTipTimeoutRef.current) {
-        clearTimeout(speedTipTimeoutRef.current);
       }
     };
   }, []);
@@ -666,9 +666,13 @@ function PlayPageClient() {
 
     // 上箭头 = 音量+
     if (e.key === 'ArrowUp') {
-      if (player.volume < 1) {
+      const currentVolume = player.volume;
+      if (currentVolume < 1) {
         player.volume += 0.1;
-        displayShortcutHint(`音量 ${Math.round(player.volume * 100)}`, 'up');
+        displayShortcutHint(
+          `音量 ${Math.round((currentVolume + 0.1) * 100)}`,
+          'up'
+        );
       } else {
         displayShortcutHint('音量 100', 'up');
       }
@@ -677,9 +681,13 @@ function PlayPageClient() {
 
     // 下箭头 = 音量-
     if (e.key === 'ArrowDown') {
-      if (player.volume > 0) {
+      const currentVolume = player.volume;
+      if (currentVolume > 0) {
         player.volume -= 0.1;
-        displayShortcutHint(`音量 ${Math.round(player.volume * 100)}`, 'down');
+        displayShortcutHint(
+          `音量 ${Math.round((currentVolume - 0.1) * 100)}`,
+          'down'
+        );
       } else {
         displayShortcutHint('音量 0', 'down');
       }
@@ -927,129 +935,38 @@ function PlayPageClient() {
     };
   }, []);
 
-  // 长按三倍速处理函数
-  const handleTouchStart = (e: TouchEvent) => {
-    // 防止在控制栏区域触发
-    const target = e.target as HTMLElement;
-    if (
-      target.closest('.vds-controls') ||
-      target.closest('.vds-context-menu') ||
-      target.closest('.vds-lazy-gesture')
-    ) {
-      return;
-    }
-
-    // 仅在播放时触发
-    if (!playerRef.current?.playing) {
-      return;
-    }
-
-    // 清除之前的定时器
-    if (longPressTimeoutRef.current) {
-      clearTimeout(longPressTimeoutRef.current);
-    }
-
-    // 设置长按检测定时器（500ms）
-    longPressTimeoutRef.current = setTimeout(() => {
-      if (playerRef.current) {
-        // 保存原始播放速度
-        originalPlaybackRateRef.current = playerRef.current.playbackRate;
-
-        // 设置三倍速
-        playerRef.current.playbackRate = 3;
-
-        // 更新状态
-        setIsLongPressing(true);
-        setShowSpeedTip(true);
-
-        // 触发震动反馈（如果支持）
-        if (navigator.vibrate) {
-          navigator.vibrate(50);
-        }
-
-        // 3秒后自动隐藏提示
-        if (speedTipTimeoutRef.current) {
-          clearTimeout(speedTipTimeoutRef.current);
-        }
-        speedTipTimeoutRef.current = setTimeout(() => {
-          setShowSpeedTip(false);
-        }, 3000);
-      }
-    }, 500);
-  };
-
-  const handleTouchEnd = () => {
-    // 清除长按检测定时器
-    if (longPressTimeoutRef.current) {
-      clearTimeout(longPressTimeoutRef.current);
-      longPressTimeoutRef.current = null;
-    }
-
-    // 如果正在长按，恢复原始播放速度
-    if (isLongPressing && playerRef.current) {
-      playerRef.current.playbackRate = originalPlaybackRateRef.current;
-      setIsLongPressing(false);
-      setShowSpeedTip(false);
-
-      // 清除提示定时器
-      if (speedTipTimeoutRef.current) {
-        clearTimeout(speedTipTimeoutRef.current);
-        speedTipTimeoutRef.current = null;
-      }
-    }
-  };
-
-  // 添加触摸事件监听器
-  useEffect(() => {
-    const playerEl = playerRef.current?.el;
-    if (!playerEl) return;
-
-    const disableContextMenu = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
-    playerEl.addEventListener('touchstart', handleTouchStart, {
-      passive: true,
-    });
-    playerEl.addEventListener('touchend', handleTouchEnd, { passive: true });
-    playerEl.addEventListener('touchcancel', handleTouchEnd, { passive: true });
-    playerEl.addEventListener('contextmenu', disableContextMenu);
-
-    return () => {
-      playerEl.removeEventListener('touchstart', handleTouchStart);
-      playerEl.removeEventListener('touchend', handleTouchEnd);
-      playerEl.removeEventListener('touchcancel', handleTouchEnd);
-      playerEl.removeEventListener('contextmenu', disableContextMenu);
-    };
-  }, [playerRef.current, isLongPressing]);
-
   /* -------------------- 设置 meta theme-color 为纯黑 -------------------- */
   useEffect(() => {
-    if (typeof document === 'undefined') return;
+    const originalThemeColorTags = Array.from(
+      document.querySelectorAll('meta[name="theme-color"]')
+    );
 
-    // 查找或创建 meta[name="theme-color"]
-    let metaTag = document.querySelector(
-      'meta[name="theme-color"]'
-    ) as HTMLMetaElement | null;
+    // 移除已有的 theme-color 标签
+    originalThemeColorTags.forEach((tag) => tag.remove());
 
-    if (!metaTag) {
-      metaTag = document.createElement('meta');
-      metaTag.setAttribute('name', 'theme-color');
-      document.head.appendChild(metaTag);
-    }
+    // 添加播放页专用的 theme-color 标签
+    const playerThemeColorTag = document.createElement('meta');
+    playerThemeColorTag.name = 'theme-color';
+    playerThemeColorTag.content = '#000000';
+    document.head.appendChild(playerThemeColorTag);
 
-    // 记录原始颜色，并设置为纯黑
-    metaTag.setAttribute('content', '#000000');
-
-    // 卸载时恢复
+    // 组件卸载时恢复原有的 theme-color 标签
     return () => {
-      metaTag?.setAttribute('content', '#e6f3fb');
+      playerThemeColorTag.remove();
+      originalThemeColorTags.forEach((tag) => document.head.appendChild(tag));
     };
   }, []);
 
   // Safari(WebKit) 专用：用于强制重新挂载 <MediaPlayer>，实现"销毁并重建"效果
   const [playerReloadKey, setPlayerReloadKey] = useState(0);
+
+  // 实时记录音量变化
+  const handleVolumeChange = () => {
+    const v = playerRef.current?.volume;
+    if (typeof v === 'number' && !Number.isNaN(v)) {
+      lastVolumeRef.current = v;
+    }
+  };
 
   if (loading) {
     return (
@@ -1071,10 +988,18 @@ function PlayPageClient() {
           </div>
           <div className='text-base mb-6'>{error}</div>
           <button
-            onClick={() => window.history.back()}
+            onClick={() => {
+              if (videoTitle) {
+                window.location.href = `/aggregate?q=${encodeURIComponent(
+                  videoTitle
+                )}${videoYear ? `&year=${encodeURIComponent(videoYear)}` : ''}`;
+              } else {
+                window.location.href = '/';
+              }
+            }}
             className='px-6 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors'
           >
-            返回
+            {videoTitle ? '返回选源' : '返回首页'}
           </button>
         </div>
       </div>
@@ -1087,10 +1012,19 @@ function PlayPageClient() {
         <div className='text-white text-center'>
           <div className='text-xl font-semibold mb-4'>未找到视频</div>
           <button
-            onClick={() => window.history.back()}
+            onClick={() => {
+              // 返回选源页
+              if (videoTitle) {
+                window.location.href = `/aggregate?q=${encodeURIComponent(
+                  videoTitle
+                )}${videoYear ? `&year=${encodeURIComponent(videoYear)}` : ''}`;
+              } else {
+                window.location.href = '/';
+              }
+            }}
             className='px-6 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors'
           >
-            返回
+            {videoTitle ? '返回选源' : '返回首页'}
           </button>
         </div>
       </div>
@@ -1105,7 +1039,6 @@ function PlayPageClient() {
     sourceName,
     onToggleFavorite,
     onOpenSourcePanel,
-    isFullscreen,
   }: {
     videoTitle: string;
     favorited: boolean;
@@ -1114,7 +1047,6 @@ function PlayPageClient() {
     sourceName: string;
     onToggleFavorite: () => void;
     onOpenSourcePanel: () => void;
-    isFullscreen: boolean;
   }) => {
     return (
       <div
@@ -1123,30 +1055,30 @@ function PlayPageClient() {
       >
         <div className='bg-black/60 backdrop-blur-sm px-0 sm:px-6 py-4 relative flex items-center sm:justify-center'>
           {/* 返回按钮 */}
-          {!isFullscreen && (
-            <button
-              onClick={() => {
-                if (playerRef.current?.fullscreen) {
-                  playerRef.current?.exitFullscreen();
-                }
-                window.history.back();
-              }}
-              className='absolute left-0 sm:left-6 text-white hover:text-gray-300 transition-colors p-2'
+          <button
+            onClick={() => {
+              // 如果当下是全屏状态，先退出全屏，而不是直接后退
+              if (isFullscreen) {
+                playerRef.current?.exitFullscreen();
+                return;
+              }
+              window.history.back();
+            }}
+            className='absolute left-0 sm:left-6 text-white hover:text-gray-300 transition-colors p-2'
+          >
+            <svg
+              width='24'
+              height='24'
+              viewBox='0 0 24 24'
+              fill='none'
+              xmlns='http://www.w3.org/2000/svg'
             >
-              <svg
-                width='24'
-                height='24'
-                viewBox='0 0 24 24'
-                fill='none'
-                xmlns='http://www.w3.org/2000/svg'
-              >
-                <path
-                  d='M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z'
-                  fill='currentColor'
-                />
-              </svg>
-            </button>
-          )}
+              <path
+                d='M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z'
+                fill='currentColor'
+              />
+            </svg>
+          </button>
 
           {/* 中央标题及集数信息 */}
           <div
@@ -1170,28 +1102,114 @@ function PlayPageClient() {
             </div>
 
             {totalEpisodes > 1 && (
-              <div className='text-gray-300 text-sm mt-0.5'>
+              <div
+                className='text-gray-300 text-sm mt-0.5 cursor-pointer'
+                onClick={() => {
+                  setShowEpisodePanel(true);
+                  playerContainerRef.current?.focus();
+                }}
+              >
                 第 {currentEpisodeIndex + 1} 集 / 共 {totalEpisodes} 集
               </div>
             )}
           </div>
 
-          {/* 数据源徽章放置在右侧，不影响标题居中 */}
-          {sourceName && (
-            <span
-              className='absolute right-2 sm:right-6 text-gray-300 text-sm border border-gray-500/60 px-2 py-[1px] rounded cursor-pointer hover:bg-gray-600/30 transition-colors'
-              onClick={onOpenSourcePanel}
-            >
-              {sourceName}
-            </span>
-          )}
+          <div className='absolute right-2 sm:right-6 flex flex-row items-center space-x-1'>
+            {totalEpisodes > 1 && (
+              <div
+                className='vds-button text-sm'
+                onClick={() => {
+                  setShowEpisodePanel(true);
+                  playerContainerRef.current?.focus();
+                }}
+              >
+                选集
+              </div>
+            )}
+            {sourceName && (
+              <span
+                className='text-gray-300 text-sm border border-gray-500/60 px-2 py-[1px] rounded cursor-pointer hover:bg-gray-600/30 transition-colors'
+                onClick={onOpenSourcePanel}
+              >
+                {sourceName}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     );
   };
 
+  function filterAdsFromM3U8(m3u8Content: string): string {
+    if (!m3u8Content) return '';
+
+    // 按行分割M3U8内容
+    const lines = m3u8Content.split('\n');
+    const filteredLines = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // 只过滤#EXT-X-DISCONTINUITY标识
+      if (!line.includes('#EXT-X-DISCONTINUITY')) {
+        filteredLines.push(line);
+      }
+    }
+
+    return filteredLines.join('\n');
+  }
+
+  class CustomHlsJsLoader extends Hls.DefaultConfig.loader {
+    constructor(config: any) {
+      super(config);
+      const load = this.load.bind(this);
+      this.load = function (context, config, callbacks) {
+        // 拦截manifest和level请求
+        if (
+          (context as any).type === 'manifest' ||
+          (context as any).type === 'level'
+        ) {
+          const onSuccess = callbacks.onSuccess;
+          callbacks.onSuccess = function (response, stats, context) {
+            // 如果是m3u8文件，处理内容以移除广告分段
+            if (response.data && typeof response.data === 'string') {
+              // 过滤掉广告段 - 实现更精确的广告过滤逻辑
+              response.data = filterAdsFromM3U8(response.data);
+            }
+            return onSuccess(response, stats, context, null);
+          };
+        }
+        // 执行原始load方法
+        load(context, config, callbacks);
+      };
+    }
+  }
   const onProviderChange = (provider: MediaProviderAdapter | null) => {
     class extendedHls extends Hls {
+      constructor(config: any) {
+        // 调用父类构造函数
+        // @ts-ignore
+        super(config);
+
+        // 监听 Hls 错误事件，捕获 bufferStalledError 并尝试跳过
+        this.on(Hls.Events.ERROR, (_evt: any, data: any) => {
+          if (
+            data?.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR ||
+            data?.details === Hls.ErrorDetails.BUFFER_SEEK_OVER_HOLE
+          ) {
+            try {
+              const media = (this as any).media as HTMLMediaElement | undefined;
+              if (media && !media.seeking) {
+                // 前跳 1 秒，跳过当前卡顿的分片
+                media.currentTime = media.currentTime + 1;
+              }
+            } catch (err) {
+              console.warn('尝试跳过卡顿分片失败:', err);
+            }
+          }
+        });
+      }
+
       attachMedia(media: HTMLMediaElement): void {
         super.attachMedia(media);
 
@@ -1201,6 +1219,17 @@ function PlayPageClient() {
     }
     if (isHLSProvider(provider)) {
       provider.library = extendedHls;
+      provider.config = {
+        debug: false, // 关闭日志
+        enableWorker: true, // WebWorker 解码，降低主线程压力
+        lowLatencyMode: true, // 开启低延迟 LL-HLS
+        /* 缓冲/内存相关 */
+        maxBufferLength: 30, // 前向缓冲最大 30s，过大容易导致高延迟
+        backBufferLength: 30, // 仅保留 30s 已播放内容，避免内存占用
+        maxBufferSize: 60 * 1000 * 1000, // 约 60MB，超出后触发清理
+        /* 自定义loader */
+        loader: blockAdEnabled ? CustomHlsJsLoader : Hls.DefaultConfig.loader,
+      };
     }
   };
 
@@ -1225,6 +1254,7 @@ function PlayPageClient() {
 
       // 第二次（用户真正切换源）开始重建播放器
       // 设置标志，下一次由重建带来的 sourcechange 忽略
+      console.log('destory player and rebuild');
       ignoreSourceChangeRef.current = true;
       setPlayerReloadKey((k) => k + 1);
     }
@@ -1263,18 +1293,8 @@ function PlayPageClient() {
           onClick={handleForceLandscape}
           className='fixed bottom-16 left-4 z-[85] w-10 h-10 rounded-full bg-gray-800 text-white flex items-center justify-center md:hidden'
         >
-          <svg
-            className='w-6 h-6'
-            fill='none'
-            stroke='currentColor'
-            viewBox='0 0 24 24'
-          >
-            <path
-              strokeLinecap='round'
-              strokeLinejoin='round'
-              strokeWidth={2}
-              d='M3 18v-6a3 3 0 013-3h12M21 6v6a3 3 0 01-3 3H6'
-            />
+          <svg className='w-5 h-5' viewBox='0 0 1024 1024' fill='currentColor'>
+            <path d='M298.666667 469.333333h597.333333c46.933333 0 85.333333 38.4 85.333333 85.333334v341.333333c0 46.933333-38.4 85.333333-85.333333 85.333333H298.666667c-46.933333 0-85.333333-38.4-85.333334-85.333333v-341.333333c0-46.933333 38.4-85.333333 85.333334-85.333334z m0 85.333334v341.333333h597.333333v-341.333333H298.666667z m170.666666-512c46.933333 0 85.333333 38.4 85.333334 85.333333v298.666667h-85.333334V128H128v597.333333h42.666667v85.333334H128c-46.933333 0-85.333333-38.4-85.333333-85.333334V128c0-46.933333 38.4-85.333333 85.333333-85.333333h341.333333z m115.2 42.666666c128 0 238.933333 89.6 268.8 213.333334v4.266666l46.933334-51.2L951.466667 298.666667 853.333333 396.8c-17.066667 21.333333-51.2 8.533333-55.466666-17.066667V366.933333c0-115.2-89.6-213.333333-204.8-217.6h-8.533334V85.333333z' />
           </svg>
         </button>
       )}
@@ -1297,6 +1317,7 @@ function PlayPageClient() {
         poster={videoCover}
         playsInline
         autoPlay
+        volume={0.7}
         crossOrigin='anonymous'
         controlsDelay={3000}
         key={playerReloadKey}
@@ -1307,6 +1328,7 @@ function PlayPageClient() {
         onError={handlePlayerError}
         onProviderChange={onProviderChange}
         onSourceChange={onSourceChange}
+        onVolumeChange={handleVolumeChange}
       >
         <MediaProvider />
         <PlayerUITopbar
@@ -1317,7 +1339,6 @@ function PlayPageClient() {
           sourceName={detail?.source_name || ''}
           onToggleFavorite={handleToggleFavorite}
           onOpenSourcePanel={handleSourcePanelOpen}
-          isFullscreen={isFullscreen}
         />
         <DefaultVideoLayout
           icons={defaultLayoutIcons}
@@ -1325,6 +1346,7 @@ function PlayPageClient() {
             googleCastButton: null,
             pipButton: null,
             settingsMenu: null,
+            captionButton: null,
             muteButton: null, // 隐藏静音按钮
             volumeSlider: null, // 隐藏音量条
             airPlayButton: null, // 隐藏默认 AirPlay 按钮
@@ -1350,17 +1372,22 @@ function PlayPageClient() {
               ) : null,
             beforeFullscreenButton: (
               <>
-                {totalEpisodes > 1 && (
-                  <button
-                    className='vds-button mr-2'
-                    onClick={() => {
-                      setShowEpisodePanel(true);
-                      playerContainerRef.current?.focus();
-                    }}
-                  >
-                    选集
-                  </button>
-                )}
+                <button
+                  className='vds-button'
+                  aria-label={blockAdEnabled ? '关闭去广告' : '开启去广告'}
+                  onClick={() => {
+                    const newVal = !blockAdEnabled;
+                    try {
+                      saveCurrentPlayProgress();
+                      localStorage.setItem('enable_blockad', String(newVal));
+                    } catch (_) {
+                      // ignore
+                    }
+                    window.location.reload();
+                  }}
+                >
+                  <AdBlockIcon enabled={blockAdEnabled} />
+                </button>
                 <PlaybackRateButton playerRef={playerRef} />
                 {/* 自定义 AirPlay 按钮 */}
                 <AirPlayButton className='vds-button'>
@@ -1393,7 +1420,22 @@ function PlayPageClient() {
             >
               <div className='p-6 h-full flex flex-col'>
                 <div className='flex items-center justify-between mb-6'>
-                  <h3 className='text-white text-xl font-semibold'>选集列表</h3>
+                  <div className='flex items-center gap-4'>
+                    <h3 className='text-white text-xl font-semibold'>
+                      选集列表
+                    </h3>
+                    {/* 倒序小字 */}
+                    <span
+                      onClick={() => setReverseEpisodeOrder((prev) => !prev)}
+                      className={`text-sm cursor-pointer select-none transition-colors ${
+                        reverseEpisodeOrder
+                          ? 'text-green-500'
+                          : 'text-gray-400 hover:text-gray-500'
+                      }`}
+                    >
+                      倒序
+                    </span>
+                  </div>
                   <button
                     onClick={() => {
                       setShowEpisodePanel(false);
@@ -1423,7 +1465,13 @@ function PlayPageClient() {
 
                 <div className='flex-1 overflow-y-auto'>
                   <div className='grid grid-cols-4 gap-3'>
-                    {Array.from({ length: totalEpisodes }, (_, idx) => (
+                    {(reverseEpisodeOrder
+                      ? Array.from(
+                          { length: totalEpisodes },
+                          (_, i) => i
+                        ).reverse()
+                      : Array.from({ length: totalEpisodes }, (_, i) => i)
+                    ).map((idx) => (
                       <button
                         key={idx}
                         onClick={() => handleEpisodeChange(idx)}
@@ -1668,30 +1716,6 @@ function PlayPageClient() {
             <span className='text-white font-medium'>{shortcutText}</span>
           </div>
         </div>
-
-        {/* 三倍速提示 */}
-        <div
-          className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 transition-opacity duration-300 ${
-            showSpeedTip ? 'opacity-100' : 'opacity-0 pointer-events-none'
-          }`}
-        >
-          <div className='bg-black/60 backdrop-blur-sm rounded-lg p-4 flex items-center space-x-3'>
-            <svg
-              className='w-6 h-6 text-white animate-pulse'
-              fill='none'
-              stroke='currentColor'
-              viewBox='0 0 24 24'
-            >
-              <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                strokeWidth='2'
-                d='M13 10V3L4 14h7v7l9-11h-7z'
-              />
-            </svg>
-            <span className='text-white font-bold text-lg'>3x 倍速</span>
-          </div>
-        </div>
       </MediaPlayer>
     </div>
   );
@@ -1724,7 +1748,7 @@ const PlaybackRateButton = ({
   };
 
   return (
-    <button className='vds-button mr-2' onClick={cycleRate}>
+    <button className='vds-button' onClick={cycleRate}>
       {rate === 1 ? '倍速' : `${rate.toFixed(2)}x`}
     </button>
   );
@@ -1750,6 +1774,41 @@ const FavoriteIcon = ({ filled }: { filled: boolean }) => {
     );
   }
   return <Heart className='h-5 w-5 stroke-[2] text-gray-300' />;
+};
+
+// 新增：去广告图标组件
+const AdBlockIcon = ({ enabled }: { enabled: boolean }) => {
+  const color = enabled ? '#22c55e' : '#ffffff'; // Tailwind green-500 or white
+  return (
+    <svg
+      className='h-6 w-6 vds-icon' // 略微放大尺寸
+      viewBox='0 0 32 32'
+      xmlns='http://www.w3.org/2000/svg'
+    >
+      {/* "AD" 文字，居中显示 */}
+      <text
+        x='50%'
+        y='50%'
+        fontSize='20'
+        fontWeight='bold'
+        textAnchor='middle'
+        dominantBaseline='middle'
+        fill={color}
+      >
+        AD
+      </text>
+      {/* 斜线 */}
+      <line
+        x1='4'
+        y1='4'
+        x2='28'
+        y2='28'
+        stroke={color}
+        strokeWidth='4'
+        strokeLinecap='round'
+      />
+    </svg>
+  );
 };
 
 export default function PlayPage() {

@@ -1,20 +1,14 @@
 import { NextResponse } from 'next/server';
 
 import { API_CONFIG, ApiSite, getApiSites, getCacheTime } from '@/lib/config';
+import { SearchResult } from '@/lib/types';
 import { cleanHtmlTags } from '@/lib/utils';
 
-export interface SearchResult {
-  id: string;
-  title: string;
-  poster: string;
-  episodes: string[];
-  source: string;
-  source_name: string;
-  class?: string;
-  year: string;
-  desc?: string;
-  type_name?: string;
-}
+export const runtime = 'edge';
+
+// 根据环境变量决定最大搜索页数，默认 5
+const MAX_SEARCH_PAGES: number =
+  Number(process.env.NEXT_PUBLIC_SEARCH_MAX_PAGE) || 5;
 
 interface ApiSearchItem {
   vod_id: string;
@@ -95,7 +89,7 @@ async function searchFromApi(
         source: apiSite.key,
         source_name: apiName,
         class: item.vod_class,
-        year: item.vod_year,
+        year: item.vod_year ? item.vod_year.match(/\d{4}/)?.[0] || '' : '',
         desc: cleanHtmlTags(item.vod_content || ''),
         type_name: item.type_name,
       };
@@ -104,10 +98,7 @@ async function searchFromApi(
     // 获取总页数
     const pageCount = data.pagecount || 1;
     // 确定需要获取的额外页数
-    const pagesToFetch = Math.min(
-      pageCount - 1,
-      API_CONFIG.search.maxPages - 1
-    );
+    const pagesToFetch = Math.min(pageCount - 1, MAX_SEARCH_PAGES - 1);
 
     // 如果有额外页数，获取更多页的结果
     if (pagesToFetch > 0) {
@@ -165,7 +156,9 @@ async function searchFromApi(
                 source: apiSite.key,
                 source_name: apiName,
                 class: item.vod_class,
-                year: item.vod_year,
+                year: item.vod_year
+                  ? item.vod_year.match(/\d{4}/)?.[0] || ''
+                  : '',
                 desc: cleanHtmlTags(item.vod_content || ''),
                 type_name: item.type_name,
               };

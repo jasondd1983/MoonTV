@@ -1,9 +1,10 @@
-import { Search } from 'lucide-react';
+import { Link as LinkIcon, Search } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
 
 interface DemoCardProps {
+  id: string;
   title: string;
   poster: string;
   rate?: string;
@@ -53,7 +54,7 @@ function SearchCircle({
   );
 }
 
-const DemoCard = ({ title, poster, rate }: DemoCardProps) => {
+const DemoCard = ({ id, title, poster, rate }: DemoCardProps) => {
   const [hover, setHover] = useState(false);
   const router = useRouter();
 
@@ -78,7 +79,7 @@ const DemoCard = ({ title, poster, rate }: DemoCardProps) => {
         />
         {/* 评分徽章 */}
         {rate && (
-          <div className='absolute top-2 right-2 min-w-[1.25rem] h-4 sm:min-w-[1.5rem] sm:h-6 bg-pink-500 rounded-full flex items-center justify-center px-1'>
+          <div className='absolute top-2 right-2 min-w-[1.25rem] h-4 w-4 sm:h-7 sm:w-7 sm:min-w-[1.5rem] bg-pink-500 rounded-full flex items-center justify-center px-1'>
             <span className='text-white text-[0.5rem] sm:text-xs font-bold leading-none'>
               {rate}
             </span>
@@ -98,11 +99,23 @@ const DemoCard = ({ title, poster, rate }: DemoCardProps) => {
             </div>
           </div>
         </div>
+        {/* 顶部左侧 🔗 链接按钮 */}
+        <a
+          href={`https://movie.douban.com/subject/${id}`}
+          target='_blank'
+          rel='noopener noreferrer'
+          onClick={(e) => e.stopPropagation()}
+          className='absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200'
+        >
+          <div className='w-4 h-4 sm:w-7 sm:h-7 rounded-full bg-green-500 flex items-center justify-center transition-all duration-200 hover:scale-110'>
+            <LinkIcon className='w-4 h-4 text-white' strokeWidth={2} />
+          </div>
+        </a>
       </div>
       {/* 信息层 */}
       <div className='absolute top-[calc(100%+0.2rem)] left-0 right-0'>
         <div className='flex flex-col items-center justify-center'>
-          <span className='text-gray-900 font-semibold truncate w-full text-center text-xs sm:text-sm'>
+          <span className='text-gray-900 font-semibold truncate w-full text-center text-xs sm:text-sm dark:text-gray-200'>
             {title}
           </span>
         </div>

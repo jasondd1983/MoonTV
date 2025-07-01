@@ -6,20 +6,9 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 
-import PageLayout from '@/components/PageLayout';
+import { SearchResult } from '@/lib/types';
 
-interface SearchResult {
-  id: string;
-  title: string;
-  poster: string;
-  episodes: string[];
-  source: string;
-  source_name: string;
-  class?: string;
-  year: string;
-  desc?: string;
-  type_name?: string;
-}
+import PageLayout from '@/components/PageLayout';
 
 function AggregatePageClient() {
   const searchParams = useSearchParams();
@@ -113,7 +102,7 @@ function AggregatePageClient() {
 
   return (
     <PageLayout activePath='/aggregate'>
-      <div className='px-2 sm:px-10 py-4 sm:py-8 overflow-visible'>
+      <div className='flex flex-col min-h-full px-2 sm:px-10 pt-4 sm:pt-8 pb-[calc(3.5rem+env(safe-area-inset-bottom))] overflow-visible'>
         {loading ? (
           <div className='flex items-center justify-center min-h-[60vh]'>
             <div className='animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500'></div>
@@ -143,7 +132,7 @@ function AggregatePageClient() {
                 className='absolute top-0 left-0 -translate-x-[40%] -translate-y-[30%] sm:-translate-x-[180%] sm:-translate-y-1/2 p-2 rounded transition-colors'
               >
                 <svg
-                  className='h-5 w-5 text-gray-500 hover:text-green-600 transition-colors'
+                  className='h-5 w-5 text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-500 transition-colors'
                   viewBox='0 0 24 24'
                   fill='none'
                   xmlns='http://www.w3.org/2000/svg'
@@ -216,7 +205,7 @@ function AggregatePageClient() {
                         }&title=${encodeURIComponent(src.title)}${
                           src.year ? `&year=${src.year}` : ''
                         }&from=aggregate`}
-                        className='relative flex items-center justify-center w-full h-14 bg-gray-500/80 hover:bg-green-500 rounded-lg transition-colors'
+                        className='relative flex items-center justify-center w-full h-14 bg-gray-500/80 hover:bg-green-500 dark:bg-gray-700/80 dark:hover:bg-green-600 rounded-lg transition-colors'
                       >
                         {/* 名称 */}
                         <span className='px-1 text-white text-sm font-medium truncate whitespace-nowrap'>

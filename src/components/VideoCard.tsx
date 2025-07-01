@@ -218,7 +218,7 @@ export default function VideoCard({
 
           {/* 集数指示器 - 绿色小圆球 */}
           {episodes && episodes > 1 && (
-            <div className='absolute top-2 right-2 w-4 h-4 sm:w-6 sm:h-6 bg-green-500 rounded-full flex items-center justify-center'>
+            <div className='absolute top-2 right-2 w-4 h-4 sm:w-7 sm:h-7 bg-green-500 rounded-full flex items-center justify-center'>
               <span className='text-white text-[0.5rem] sm:text-xs font-bold'>
                 {episodes}
               </span>
@@ -227,7 +227,7 @@ export default function VideoCard({
 
           {/* 播放进度条 */}
           {progress !== undefined && (
-            <div className='absolute bottom-0 left-0 right-0 h-1 bg-gray-300'>
+            <div className='absolute bottom-0 left-0 right-0 h-1 bg-gray-300 dark:bg-gray-600'>
               <div
                 className='h-full bg-blue-500 transition-all duration-300'
                 style={{ width: `${progress}%` }}
@@ -237,7 +237,7 @@ export default function VideoCard({
 
           {/* 当前播放集数 */}
           {currentEpisode && episodes && episodes > 1 && (
-            <div className='absolute top-2 left-2 w-4 h-4 sm:w-6 sm:h-6 bg-blue-500 rounded-full flex items-center justify-center'>
+            <div className='absolute top-2 left-2 w-4 h-4 sm:w-7 sm:h-7 bg-blue-500 rounded-full flex items-center justify-center'>
               <span className='text-white text-[0.5rem] sm:text-xs font-bold'>
                 {currentEpisode}
               </span>
@@ -246,14 +246,14 @@ export default function VideoCard({
         </div>
 
         {/* 信息层 */}
-        <div className='absolute top-[calc(100%+0.2rem)] left-0 right-0'>
+        <div className='absolute top-[calc(100%+0.5rem)] left-0 right-0'>
           <div className='flex flex-col items-center justify-center'>
-            <span className='text-gray-900 font-semibold truncate w-full text-center text-xs sm:text-sm'>
+            <span className='text-gray-900 font-semibold truncate w-full text-center text-xs sm:text-sm dark:text-gray-200'>
               {title}
             </span>
             {source && (
-              <span className='text-gray-500 text-[0.5rem] sm:text-xs w-full text-center mt-1'>
-                <span className='inline-block border border-gray-500/60 rounded px-2 py-[1px]'>
+              <span className='text-gray-500 text-[0.5rem] sm:text-xs w-full text-center mt-1 dark:text-gray-400'>
+                <span className='inline-block border border-gray-500/60 rounded px-2 py-[1px] dark:border-gray-400/60'>
                   {source_name}
                 </span>
               </span>

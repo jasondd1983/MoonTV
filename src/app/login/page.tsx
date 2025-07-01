@@ -3,12 +3,16 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 
+import { useSite } from '@/components/SiteProvider';
+import { ThemeToggle } from '@/components/ThemeToggle';
+
 function LoginPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { siteName } = useSite();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -45,9 +49,12 @@ function LoginPageClient() {
 
   return (
     <div className='relative min-h-screen flex items-center justify-center px-4 overflow-hidden'>
-      <div className='relative z-10 w-full max-w-md rounded-3xl bg-gradient-to-b from-white/90 via-white/70 to-white/40 backdrop-blur-xl shadow-2xl p-10'>
+      <div className='absolute top-4 right-4'>
+        <ThemeToggle />
+      </div>
+      <div className='relative z-10 w-full max-w-md rounded-3xl bg-gradient-to-b from-white/90 via-white/70 to-white/40 dark:from-zinc-900/90 dark:via-zinc-900/70 dark:to-zinc-900/40 backdrop-blur-xl shadow-2xl p-10 dark:border dark:border-zinc-800'>
         <h1 className='text-green-600 tracking-tight text-center text-3xl font-extrabold mb-8 bg-clip-text drop-shadow-sm'>
-          MoonTV
+          {siteName}
         </h1>
         <form onSubmit={handleSubmit} className='space-y-8'>
           <div>
@@ -58,14 +65,16 @@ function LoginPageClient() {
               id='password'
               type='password'
               autoComplete='current-password'
-              className='block w-full rounded-lg border-0 py-3 px-4 text-gray-900 shadow-sm ring-1 ring-white/60 placeholder:text-gray-500 focus:ring-2 focus:ring-green-500 focus:outline-none sm:text-base bg-white/60 backdrop-blur'
+              className='block w-full rounded-lg border-0 py-3 px-4 text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-white/60 dark:ring-white/20 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:ring-2 focus:ring-green-500 focus:outline-none sm:text-base bg-white/60 dark:bg-zinc-800/60 backdrop-blur'
               placeholder='输入访问密码'
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
 
-          {error && <p className='text-sm text-red-600'>{error}</p>}
+          {error && (
+            <p className='text-sm text-red-600 dark:text-red-400'>{error}</p>
+          )}
 
           <button
             type='submit'

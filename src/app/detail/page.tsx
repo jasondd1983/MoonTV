@@ -25,6 +25,8 @@ function DetailPageClient() {
   const [error, setError] = useState<string | null>(null);
   const [playRecord, setPlayRecord] = useState<PlayRecord | null>(null);
   const [favorited, setFavorited] = useState(false);
+  // 是否倒序显示选集
+  const [reverseEpisodeOrder, setReverseEpisodeOrder] = useState(false);
 
   const fallbackTitle = searchParams.get('title') || '';
   const fallbackYear = searchParams.get('year') || '';
@@ -106,7 +108,7 @@ function DetailPageClient() {
 
   return (
     <PageLayout activePath='/detail'>
-      <div className='px-2 sm:px-10 py-4 sm:py-8 overflow-visible'>
+      <div className='flex flex-col min-h-full px-2 sm:px-10 pt-4 sm:pt-8 pb-[calc(3.5rem+env(safe-area-inset-bottom))] overflow-visible'>
         {/* 顶部返回按钮已移入右侧信息容器 */}
         {loading ? (
           <div className='flex items-center justify-center min-h-[60vh]'>
@@ -137,7 +139,7 @@ function DetailPageClient() {
                 className='absolute top-0 left-0 -translate-x-[40%] -translate-y-[30%] sm:-translate-x-[180%] sm:-translate-y-1/2 p-2 rounded transition-colors'
               >
                 <svg
-                  className='h-5 w-5 text-gray-500 hover:text-green-600 transition-colors'
+                  className='h-5 w-5 text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-500 transition-colors'
                   viewBox='0 0 24 24'
                   fill='none'
                   xmlns='http://www.w3.org/2000/svg'
@@ -221,7 +223,7 @@ function DetailPageClient() {
                             ? `&year=${detail.year || fallbackYear}`
                             : ''
                         }`}
-                        className='hidden sm:flex items-center justify-center gap-2 px-6 py-2 bg-gray-500 hover:bg-gray-600 rounded-lg transition-colors text-white'
+                        className='hidden sm:flex items-center justify-center gap-2 px-6 py-2 bg-gray-500 hover:bg-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors text-white'
                       >
                         <div className='w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-white border-b-[6px] border-b-transparent'></div>
                         <span>从头开始</span>
@@ -252,10 +254,10 @@ function DetailPageClient() {
                   {/* 爱心按钮 */}
                   <button
                     onClick={handleToggleFavorite}
-                    className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors  ${
+                    className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors ${
                       favorited
-                        ? 'bg-gray-300 hover:bg-gray-400'
-                        : 'bg-gray-400 hover:bg-gray-500'
+                        ? 'bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500'
+                        : 'bg-gray-400 hover:bg-gray-500 dark:bg-gray-700 dark:hover:bg-gray-600'
                     }`}
                   >
                     <Heart
@@ -281,7 +283,7 @@ function DetailPageClient() {
                       ></div>
                     </div>
                     {/* 剩余时间 */}
-                    <span className='text-gray-600/60 text-xs whitespace-nowrap'>
+                    <span className='text-gray-600/60 dark:text-gray-400/60 text-xs whitespace-nowrap'>
                       {playRecord.total_episodes > 1
                         ? `第${playRecord.index}集 剩余 `
                         : '剩余 '}
@@ -309,23 +311,43 @@ function DetailPageClient() {
                   <div className='text-gray-400 ml-2'>
                     共 {detail.episodes.length} 集
                   </div>
+                  {/* 倒序切换 */}
+                  <span
+                    onClick={() => setReverseEpisodeOrder((prev) => !prev)}
+                    className={`ml-4 text-sm cursor-pointer select-none transition-colors ${
+                      reverseEpisodeOrder
+                        ? 'text-green-500'
+                        : 'text-gray-400 hover:text-gray-500'
+                    }`}
+                  >
+                    倒序
+                  </span>
                 </div>
                 <div className='grid grid-cols-3 gap-2 sm:grid-cols-[repeat(auto-fill,_minmax(6rem,_6rem))] sm:gap-4 justify-start'>
-                  {detail.episodes.map((episode, idx) => (
+                  {(reverseEpisodeOrder
+                    ? Array.from(
+                        { length: detail.episodes.length },
+                        (_, i) => i
+                      ).reverse()
+                    : Array.from(
+                        { length: detail.episodes.length },
+                        (_, i) => i
+                      )
+                  ).map((idx) => (
                     <a
                       key={idx}
                       href={`/play?source=${searchParams.get(
                         'source'
                       )}&id=${searchParams.get('id')}&index=${
                         idx + 1
-                      }&title=${encodeURIComponent(detail.title)}${
+                      }&position=0&title=${encodeURIComponent(detail.title)}${
                         detail.year || fallbackYear
                           ? `&year=${detail.year || fallbackYear}`
                           : ''
                       }`}
-                      className='bg-gray-500/80 hover:bg-green-500 text-white px-5 py-2 rounded-lg transition-colors text-base font-medium w-24 text-center'
+                      className='bg-gray-500/80 hover:bg-green-500 dark:bg-gray-700/80 dark:hover:bg-green-600 text-white px-5 py-2 rounded-lg transition-colors text-base font-medium w-24 text-center'
                     >
-                      第{idx + 1}集
+                      {idx + 1}
                     </a>
                   ))}
                 </div>

@@ -265,6 +265,37 @@ export async function clearSearchHistory(): Promise<void> {
   localStorage.removeItem(SEARCH_HISTORY_KEY);
 }
 
+/**
+ * 删除单条搜索历史
+ */
+export async function deleteSearchHistory(keyword: string): Promise<void> {
+  const trimmed = keyword.trim();
+  if (!trimmed) return;
+
+  // 数据库模式
+  if (STORAGE_TYPE === 'database') {
+    try {
+      await fetch(`/api/searchhistory?keyword=${encodeURIComponent(trimmed)}`, {
+        method: 'DELETE',
+      });
+    } catch (err) {
+      console.error('删除搜索历史失败:', err);
+    }
+    return;
+  }
+
+  // localStorage 模式
+  if (typeof window === 'undefined') return;
+
+  try {
+    const history = await getSearchHistory();
+    const newHistory = history.filter((k) => k !== trimmed);
+    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(newHistory));
+  } catch (err) {
+    console.error('删除搜索历史失败:', err);
+  }
+}
+
 // ---------------- 收藏相关 API ----------------
 
 // 收藏数据结构
@@ -438,4 +469,46 @@ export async function toggleFavorite(
 
   await saveFavorite(source, id, favoriteData);
   return true;
+}
+
+/**
+ * 清空全部播放记录
+ */
+export async function clearAllPlayRecords(): Promise<void> {
+  // 数据库模式
+  if (STORAGE_TYPE === 'database') {
+    try {
+      await fetch('/api/playrecords', {
+        method: 'DELETE',
+      });
+    } catch (err) {
+      console.error('清空播放记录失败:', err);
+    }
+    return;
+  }
+
+  // localStorage 模式
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(PLAY_RECORDS_KEY);
+}
+
+/**
+ * 清空全部收藏
+ */
+export async function clearAllFavorites(): Promise<void> {
+  // 数据库模式
+  if (STORAGE_TYPE === 'database') {
+    try {
+      await fetch('/api/favorites', {
+        method: 'DELETE',
+      });
+    } catch (err) {
+      console.error('清空收藏失败:', err);
+    }
+    return;
+  }
+
+  // localStorage 模式
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(FAVORITES_KEY);
 }
