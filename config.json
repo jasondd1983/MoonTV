@@ -77,10 +77,6 @@
       "api": "https://api.niuniuzy.me/api.php/provide/vod",
       "name": "牛牛资源"
     },
-    "1080": {
-      "api": "https://api.yzzy-api.com/inc/api_mac10.php",
-      "name": "1080资源"
-    },
     "wxzy": {
       "api": "https://api.wuxianzy.net/api.php/provide/vod",
       "name": "无限资源"
