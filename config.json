@@ -1,6 +1,42 @@
 {
   "cache_time": 7200,
   "api_site": {
+    "zizi": {
+      "api": "https://www.ziziys.net/api.php/provide/vod",
+      "name": "子子资源"
+    },
+    "mantou": {
+      "api": "https://mov.5ixmt.com/api.php/provide/vod",
+      "name": "馒头资源"
+    },
+    "TVB": {
+      "api": "http://www.viptv01.com/api.php/provide/vod",
+      "name": "TVB云播"
+    },
+    "laowang": {
+      "api": "https://laowang.co/api.php/provide/vod",
+      "name": "老王"
+    },
+    "Kimivod": {
+      "api": "https://kimivod.com/api.php/provide/vod",
+      "name": "Kimivod"
+    },
+    "anime": {
+      "api": "https://anime.girigirilove.icu/api.php/provide/vod",
+      "name": "末日動漫"
+    },
+    "maotai": {
+      "api": "https://caiji.maotaizy.cc/api.php/provide/vod",
+      "name": "茅台资源"
+    },
+    "69mu": {
+      "api": "https://www.69mu.cn/api.php/provide/vod",
+      "name": "舒度资源"
+    },
+    "tfdh": {
+      "api": "https://gctf.tfdh.top/api.php/provide/vod",
+      "name": "听风资源"
+    },
     "dyttzy": {
       "api": "http://caiji.dyttzyapi.com/api.php/provide/vod",
       "name": "电影天堂资源",
