@@ -21,17 +21,13 @@
       "api": "https://kimivod.com/api.php/provide/vod",
       "name": "Kimivod"
     },
-    "anime": {
-      "api": "https://anime.girigirilove.icu/api.php/provide/vod",
-      "name": "末日動漫"
+    "myzy": {
+      "api": "https://api.maoyanapi.top/api.php/provide/vod",
+      "name": "猫眼资源"
     },
     "maotai": {
       "api": "https://caiji.maotaizy.cc/api.php/provide/vod",
       "name": "茅台资源"
-    },
-    "69mu": {
-      "api": "https://www.69mu.cn/api.php/provide/vod",
-      "name": "舒度资源"
     },
     "tfdh": {
       "api": "https://gctf.tfdh.top/api.php/provide/vod",
