@@ -34,6 +34,11 @@
       "name": "电影天堂资源",
       "detail": "http://caiji.dyttzyapi.com"
     },
+	"1080zyku": {
+      "name": "1080资源",
+      "api": "https://api.1080zyku.com/inc/api_mac10.php",
+      "detail": "https://api.1080zyku.com"
+    },
     "heimuer": {
       "api": "https://json.heimuer.xyz/api.php/provide/vod",
       "name": "黑木耳",
@@ -97,6 +102,11 @@
       "api": "https://api.wujinapi.me/api.php/provide/vod",
       "name": "无尽资源"
     },
+	"subo": {
+      "name": "速博资源",
+      "api": "https://subocaiji.com/api.php/provide/vod",
+      "detail": ""
+    },
     "niuniu": {
       "api": "https://api.niuniuzy.me/api.php/provide/vod",
       "name": "牛牛资源"
@@ -110,12 +120,12 @@
       "name": "旺旺短剧"
     },
     "aiduanjucc": {
-			"api": "https://www.aiduanju.cc/",
-			"name": "爱短剧"
-		},
+		"api": "https://www.aiduanju.cc/",
+		"name": "爱短剧"
+	},
     "suonisandian": {
       "api": "https://xsd.sdzyapi.com/api.php/provide/vod",
-      "name": "索尼-闪电资源"
+      "name": "闪电资源"
     },
     "ikun": {
       "api": "https://ikunzyapi.com/api.php/provide/vod",
